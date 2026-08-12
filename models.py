@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 
 class User:
@@ -16,16 +18,22 @@ class User:
     def __repr__(self):
         return f"User({self.username!r})"
 
-    def net_balance(self):
+    # TODO: should the return type be int or float?
+    def net_balance(self, group: Group | None = None):
         """
-        Returns the user's net balance (derived state) across all groups it is
-        a member of. Positive net_balance means that other users owe this user
-        more money than this user owes other users, and vice versa.
+        Returns the user's net balance (derived state):
+            For all groups if group is None
+            For the specified group if group is not None.
+        When group.balances[A][B] > 0, User B owes User A money.
+        Hence when net_balance() returns a positive number, other users owe this
+        user more money than this user owes other users, and vice versa.
         """
-        # TODO: Derive the net balance by accessing group details
-        # and calculating the net balance for each group, then summing them.
-
-        raise NotImplementedError()
+        if group is not None:
+            return sum(group.balances[self].values())
+        overall_net_balance = 0
+        for group in self.groups:
+            overall_net_balance += sum(group.balances[self].values())
+        return overall_net_balance
 
     @property
     def groups(self):
