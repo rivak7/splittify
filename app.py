@@ -2,6 +2,7 @@ from models import User, Group
 
 class App:
     """Stores app state, including a registry of Users and Groups."""
+
     def __init__(self, file: str | None = None):
         self.users_by_id = {}
         self.groups_by_id = {}

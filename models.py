@@ -1,9 +1,13 @@
+"""Models for Users and Groups of Users in Splittify App instances."""
+
 from __future__ import annotations
 
 import uuid
 
+
 class User:
     """A simple model of a user."""
+
     def __init__(self, username: str, user_id: str | None = None):
         """
         This constructor is for use by an App instance only. A new User
@@ -50,6 +54,7 @@ class User:
 
 class Group:
     """A model for a group of users with debt tracking for split payments."""
+
     def __init__(
         self,
         group_name: str,
