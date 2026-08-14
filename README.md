@@ -1,13 +1,41 @@
 # splittify
 
-WORK IN PROGRESS: A simple tool for tracking split expenses and debts among friends. It allows users to create groups, add expenses, and calculate how much each person owes or is owed. The tool provides a clear summary of all transactions and balances, making it easy to settle debts and keep track of shared expenses.
+> **Work in progress.** Splittify is a lightweight tool for tracking split
+> expenses and simplifying debts.
 
-This project was inspired by Splitwise. I wanted to develop my own lightweight version of it to gain practice with Python programming concepts I already know, weigh design decisions, and later introduce myself to data structures and algorithms work by implementing debts simplification.
+Splittify allows users to create groups, record shared expenses, and calculate how much each person owes or is owed.
+
+This project was inspired by Splitwise. I wanted to develop my own version of it to gain practice with Python programming concepts I already know, weigh design decisions, and later introduce myself to data structures and algorithms work by implementing debt simplification.
 
 ## Requirements
+
 - Python 3.10 or higher
 
-Tests run with:
+## Development setup
+
+Create and activate a virtual environment:
+
 ```bash
-python -m unittest
+python -m venv .venv
+source .venv/bin/activate
+```
+
+Install Splittify and its development dependencies:
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+## Tests
+
+Run the test suite with:
+
+```bash
+python -m pytest
+```
+
+or simply:
+
+```bash
+pytest
 ```

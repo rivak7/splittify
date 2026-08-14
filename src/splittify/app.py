@@ -1,4 +1,4 @@
-from models import User, Group
+from .models import User, Group
 
 class App:
     """Stores app state, including a registry of Users and Groups."""
@@ -20,6 +20,11 @@ class App:
             group_name: str,
             users: list[User] | None = None,
     ) -> Group:
+        # Any user passed into App operations must belong to the user registry
+        if users is not None:
+            for user in users:
+                if self.find_user(user.user_id) is not user:
+                    raise ValueError("Unrecognized user.")
         group = Group(group_name, users)
         self.groups_by_id[group.group_id] = group
         return group
