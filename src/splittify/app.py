@@ -41,6 +41,17 @@ class App:
         except KeyError:
             return None
 
+    def add_users_to_group(self, group, *users):
+        if self.find_group(group.group_id) is not group:
+            raise ValueError("Unrecognized group.")
+        for user in users:
+            if self.find_user(user.user_id) is not user:
+                raise ValueError("Unrecognized user.")
+        group._add_users(*users)
+
+    def add_expense(self, group, expense):
+        pass
+
     # TODO: decide if/how to implement deletion methods
     def delete_user(self, user_id: str):
         # how to deal with existing debts?
