@@ -1,8 +1,9 @@
 """Models for Users and Groups of Users in Splittify App instances."""
 
 from __future__ import annotations
-# from dataclasses import dataclass, field
+from types import MappingProxyType
 from datetime import datetime, timezone
+import math
 import uuid
 
 
@@ -43,8 +44,6 @@ class User:
 
     @property
     def groups(self):
-        # Group.add_users() is the only way to modify User._groups,
-        # enforcing the invariant
         return tuple(self._groups)
 
     @property
@@ -106,29 +105,64 @@ class Group:
                     self.balances[user][other_user] = 0
                     self.balances[other_user][user] = 0
 
-    # TODO: write add_expense()
-    # Should be the only way to add expenses (self._expenses), so:
-        # payer belongs to this group
-        # every debtor belongs to this group
+    def _add_expense(
+        self,
+        payer: User,
+        debtors: list[User],
+        amount: int,
+        description: str,
+        split: dict[User, float] | None = None,
+        expense_id: str | None = None,
+    ) -> Expense:
+        expense_mismatch_error = ValueError(
+            "Expense mismatches Group: "
+            "not all Users involved in the Expense are members of this Group."
+        )
+        if payer not in self._users:
+            raise expense_mismatch_error
+        for debtor in debtors:
+            if debtor not in self._users:
+                raise expense_mismatch_error
+
+        expense = Expense(
+            payer,
+            debtors,
+            amount,
+            description,
+            split,
+            expense_id,
+        )
+
+        self._apply_expense(expense)
+        self._expenses.append(expense)
+        return expense
+
     # TODO: write edit_expense()
     # TODO: write delete_expense()
 
-    def _apply_expense(self, expense: Expense):
+    def _apply_expense(self, expense: Expense, remove=False):
+        """
+        Logic for updating the balance graph after a shared expense.
+
+        For evenly split expenses (expense.split is None):
+            base_share is calculated as floor(amount/n) where n is the number of
+            users involved in the shared expense.
+            There is a remainder r = amount mod n. When r is nonzero, one extra
+            cent is assigned to the debts of each of the first r debtors.
+            The payer never pays an 'extra' cent.
+        """
         if expense.split is not None:
-            raise NotImplementedError() # only even splitting implemented for now
-        share = expense.amount // (len(expense.debtors) + 1)
+            raise NotImplementedError("Only even splitting implemented for now.")
+
+        mult = -1 if remove else 1
+        base_share = (expense.amount // (len(expense.debtors) + 1)) * mult
         remainder = expense.amount % (len(expense.debtors) + 1)
-        if remainder == 0:
-            for debtor in expense.debtors:
-                self.balances[expense.payer][debtor] += share
-                self.balances[debtor][expense.payer] -= share
-        else:
-            for i in range(remainder):
-                self.balances[expense.payer][expense.debtors[i]] += share + 1
-                self.balances[expense.debtors[i]][expense.payer] -= share + 1
-            for j in range(remainder, len(expense.debtors)):
-                self.balances[expense.payer][expense.debtors[j]] += share
-                self.balances[expense.debtors[j]][expense.payer] -= share
+
+        for i, debtor in enumerate(expense.debtors):
+            share = base_share + mult if i < remainder else base_share
+            self.balances[expense.payer][debtor] += share
+            self.balances[debtor][expense.payer] -= share
+
 
 class Expense:
     """
@@ -156,21 +190,39 @@ class Expense:
         - values sum to 1.
         If split is None, the amount is split equally.
         """
-        self._expense_id = expense_id if expense_id is not None else str(uuid.uuid4())
-        # immutable
-        self._payer = payer # immutable
-        self._created_at = datetime.now(timezone.utc) # immutable
-        self._updated_at = datetime.now(timezone.utc) # to be modified by Group
-        # validate
-        self._debtors = debtors
-        self._amount = amount
-        self._description = description
-        # TODO: later validate sum(split.values()) ==  1
-        self._split = split
+        # validate first
+        if not debtors:
+            raise ValueError("A split expense must have at least one debtor.")
+        if payer in debtors:
+            raise ValueError("The payer cannot be a debtor of the same expense.")
+        if len(debtors) != len(set(debtors)):
+            raise ValueError("Debtors cannot contain duplicates.")
 
-    # TODO: get rid of setter methods so that this object may eventually become
-    # a frozen dataclass.
-    # Group methods should be able to modify non-public attributes
+        if not isinstance(amount, int):
+            raise ValueError("Amount must be an integer number of cents.")
+        if amount <= 0:
+            raise ValueError("Amount must be positive.")
+
+        if not description.strip():
+            raise ValueError("Description cannot be empty.")
+
+        if split is not None:
+            if not(math.isclose(sum(split.values()), 1)):
+                raise ValueError("Invalid split: values must sum to 1.")
+
+        self._expense_id = (
+            expense_id if expense_id is not None
+            else str(uuid.uuid4())
+        )
+        self._payer = payer
+        self._created_at = datetime.now(timezone.utc)
+        self._updated_at = datetime.now(timezone.utc) # to be modified by Group
+        self._debtors = tuple(debtors)
+        self._amount = amount
+        self._description = description.strip()
+        self._split = split.copy() if split is not None else None
+
+    # Group methods will directly modify non-public attributes
 
     @property
     def expense_id(self):
@@ -182,44 +234,27 @@ class Expense:
 
     @property
     def debtors(self):
-        return tuple(self._debtors)
-
-    # @debtors.setter
-    # def debtors(self, lst: list[User]):
-    #     if not lst:
-    #         raise ValueError("A split expense must have at least one debtor.")
-    #     if self.payer in lst:
-    #         raise ValueError("The payer cannot be a debtor of the same expense.")
-    #     if len(lst) != len(set(lst)):
-    #         raise ValueError("Debtors cannot contain duplicates.")
-    #     self._debtors = lst
+        return self._debtors
 
     @property
     def amount(self):
         return self._amount
 
-    # @amount.setter
-    # def amount(self, value: int):
-    #     if not isinstance(value, int):
-    #         raise ValueError("Amount must be an integer number of cents.")
-    #     if value <= 0:
-    #         raise ValueError("Amount must be positive.")
-    #     self._amount = value
-
     @property
     def description(self):
         return self._description
-
-    # @description.setter
-    # def description(self, value: str):
-    #     if not value.strip():
-    #         raise ValueError("Description cannot be empty.")
-    #     self._description = value.strip()
 
     @property
     def created_at(self):
         return self._created_at
 
     @property
+    def updated_at(self):
+        return self._updated_at
+
+    @property
     def split(self):
-        return self._split
+        # return a read-only view of the dictionary
+        # can use frozendict() in Python 3.15+,
+        # but the version was not yet stable at the time of writing
+        return MappingProxyType(self._split) if self._split is not None else None

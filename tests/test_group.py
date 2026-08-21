@@ -5,7 +5,6 @@ from types import SimpleNamespace
 import pytest
 
 from splittify.app import App
-from splittify.models import Expense
 
 
 @pytest.fixture
@@ -58,14 +57,13 @@ def test_group_initializes_complete_zero_balance_graph(trip):
 
 
 def test_expense_of_sixty_dollars_splits_evenly_among_three(trip):
-    expense = Expense(
+    trip.app.add_expense(
+        trip.group,
         trip.alice,
         [trip.bob, trip.charlie],
         6000,
         "tickets",
     )
-
-    trip.group._apply_expense(expense)
 
     assert trip.alice.net_balance() == 4000
     assert trip.bob.net_balance() == -2000
@@ -76,8 +74,13 @@ def test_expense_of_sixty_dollars_splits_evenly_among_three(trip):
 
 
 def test_expense_of_one_dollar_among_three_gives_extra_cent_to_first_debtor(trip):
-    expense = Expense(trip.alice, [trip.bob, trip.charlie], 100, "candy")
-    trip.group._apply_expense(expense)
+    trip.app.add_expense(
+        trip.group,
+        trip.alice,
+        [trip.bob, trip.charlie],
+        100,
+        "candy",
+    )
 
     assert trip.alice.net_balance() == 67
     assert trip.bob.net_balance() == -34
@@ -85,10 +88,20 @@ def test_expense_of_one_dollar_among_three_gives_extra_cent_to_first_debtor(trip
 
 
 def test_expenses_accumulate_correctly(trip):
-    expense1 = Expense(trip.alice, [trip.bob, trip.charlie], 6000, "tickets")
-    trip.group._apply_expense(expense1)
-    expense2 = Expense(trip.bob, [trip.alice], 75, "candy")
-    trip.group._apply_expense(expense2)
+    trip.app.add_expense(
+        trip.group,
+        trip.alice,
+        [trip.bob, trip.charlie],
+        6000,
+        "tickets",
+    )
+    trip.app.add_expense(
+        trip.group,
+        trip.bob,
+        [trip.alice],
+        75,
+        "candy",
+    )
 
     assert trip.alice.net_balance() == 4000 - 38
     assert trip.bob.net_balance() == -2000 + 38
