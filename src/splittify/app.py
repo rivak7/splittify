@@ -81,6 +81,15 @@ class App:
             expense_id,
         )
 
+    def delete_expense(
+        self,
+        group: Group,
+        expense_id: str,
+    ) -> Expense:
+        if not self._groups_in_registry(group):
+            raise ValueError("Unrecognized group.")
+        return group._delete_expense(expense_id)
+
     # TODO: decide if/how to implement deletion methods
     def delete_user(self, user_id: str):
         # how to deal with existing debts?

@@ -67,7 +67,7 @@ class Group:
         self._group_id = group_id if group_id is not None else str(uuid.uuid4())
         self.group_name = group_name.strip()
         self._users = []
-        self._expenses = [] # do stuff with this in the expense methods
+        self._expenses_by_id = {}
         self.balances = {}
         if users is not None:
             self._add_users(*users)
@@ -89,7 +89,10 @@ class Group:
 
     @property
     def expenses(self):
-        return tuple(self._expenses)
+        return tuple(self._expenses_by_id.values())
+
+    def _find_expense(self, expense_id: str) -> Expense | None:
+        return self._expenses_by_id.get(expense_id)
 
     def _add_users(self, *users):
         for user in users:
@@ -114,6 +117,12 @@ class Group:
         split: dict[User, float] | None = None,
         expense_id: str | None = None,
     ) -> Expense:
+        if (
+            expense_id is not None
+            and self._find_expense(expense_id) is not None
+        ):
+            raise ValueError("Expense is already registered in this group.")
+
         expense_mismatch_error = ValueError(
             "Expense mismatches Group: "
             "not all Users involved in the Expense are members of this Group."
@@ -134,11 +143,40 @@ class Group:
         )
 
         self._apply_expense(expense)
-        self._expenses.append(expense)
+        self._expenses_by_id[expense.expense_id] = expense
         return expense
 
+    def _delete_expense(
+        self,
+        expense_id: str,
+    ) -> Expense:
+        expense = self._find_expense(expense_id)
+        if not expense:
+            raise ValueError("Invalid Expense")
+        self._apply_expense(expense, remove=True)
+        return self._expenses_by_id.pop(expense_id)
+
     # TODO: write edit_expense()
-    # TODO: write delete_expense()
+    def _edit_expense(
+        self,
+        expense_id: str,
+        payer: User,
+        debtors: list[User],
+        amount: int,
+        description: str,
+        split: dict[User, float] | None = None,
+    ) -> Expense:
+        raise NotImplementedError() # delete later
+
+        expense = self._find_expense(expense_id)
+        if not expense:
+            raise ValueError("Invalid Expense")
+        # TODO: validate new state
+        self._apply_expense(expense, remove=True)
+        # TODO: mutate canonical Expense
+        # TODO: apply new effect
+        # TODO: update updated_at
+        return expense
 
     def _apply_expense(self, expense: Expense, remove=False):
         """
