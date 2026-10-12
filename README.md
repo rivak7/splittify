@@ -1,5 +1,7 @@
 # splittify
 
+[![tests](https://github.com/rivak7/splittify/actions/workflows/tests.yml/badge.svg)](https://github.com/rivak7/splittify/actions/workflows/tests.yml)
+
 > **Work in progress.** Splittify is a lightweight tool for tracking split
 > expenses and simplifying debts.
 
