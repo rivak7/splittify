@@ -171,7 +171,13 @@ class Group:
         expense = self._find_expense(expense_id)
         if not expense:
             raise ValueError("Invalid Expense")
-        # TODO: validate new state
+        Expense._validate(
+            payer,
+            debtors,
+            amount,
+            description,
+            split,
+        )
         self._apply_expense(expense, remove=True)
         # TODO: mutate canonical Expense
         # TODO: apply new effect
@@ -228,7 +234,34 @@ class Expense:
         - values sum to 1.
         If split is None, the amount is split equally.
         """
-        # validate first
+        self._validate(
+            payer,
+            debtors,
+            amount,
+            description,
+            split,
+        )
+
+        self._expense_id = (
+            expense_id if expense_id is not None
+            else str(uuid.uuid4())
+        )
+        self._payer = payer
+        self._created_at = datetime.now(timezone.utc)
+        self._updated_at = datetime.now(timezone.utc) # to be modified by Group
+        self._debtors = tuple(debtors)
+        self._amount = amount
+        self._description = description.strip()
+        self._split = split.copy() if split is not None else None
+
+    @staticmethod
+    def _validate(
+        payer: User,
+        debtors: list[User],
+        amount: int,
+        description: str,
+        split: dict[User, float] | None = None,
+    ):
         if not debtors:
             raise ValueError("A split expense must have at least one debtor.")
         if payer in debtors:
@@ -247,18 +280,6 @@ class Expense:
         if split is not None:
             if not(math.isclose(sum(split.values()), 1)):
                 raise ValueError("Invalid split: values must sum to 1.")
-
-        self._expense_id = (
-            expense_id if expense_id is not None
-            else str(uuid.uuid4())
-        )
-        self._payer = payer
-        self._created_at = datetime.now(timezone.utc)
-        self._updated_at = datetime.now(timezone.utc) # to be modified by Group
-        self._debtors = tuple(debtors)
-        self._amount = amount
-        self._description = description.strip()
-        self._split = split.copy() if split is not None else None
 
     # Group methods will directly modify non-public attributes
 
