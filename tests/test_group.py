@@ -110,3 +110,62 @@ def test_expenses_accumulate_correctly(trip):
         trip.group.balances[trip.alice][trip.bob]
         == -trip.group.balances[trip.bob][trip.alice]
     )
+
+
+def test_deleting_expense_restores_group_state(trip):
+    expense = trip.app.add_expense(
+        trip.group,
+        trip.alice,
+        [trip.bob, trip.charlie],
+        100,
+        "candy",
+    )
+    deleted_expense = trip.app.delete_expense(
+        trip.group,
+        expense.expense_id,
+    )
+
+    assert deleted_expense is expense
+    assert expense not in trip.group.expenses
+
+    for user_balances in trip.group.balances.values():
+        for balance in user_balances.values():
+            assert balance == 0
+
+
+def test_deleting_many_expenses_with_leftover_cents_restores_zero_balances(trip):
+    expenses = [
+        # 100 % 3 == 1 leftover cent
+        trip.app.add_expense(
+            trip.group, trip.alice, [trip.bob, trip.charlie], 100, "candy"
+        ),
+        # 1001 % 3 == 2 leftover cents
+        trip.app.add_expense(
+            trip.group, trip.bob, [trip.alice, trip.charlie], 1001, "dinner"
+        ),
+        # 7 % 2 == 1 leftover cent
+        trip.app.add_expense(
+            trip.group, trip.charlie, [trip.alice], 7, "gum"
+        ),
+        # 6000 % 3 == 0 leftover cents
+        trip.app.add_expense(
+            trip.group, trip.alice, [trip.bob, trip.charlie], 6000, "hotel"
+        ),
+    ]
+
+    assert any(
+        balance != 0
+        for user_balances in trip.group.balances.values()
+        for balance in user_balances.values()
+    )
+
+    # delete out of creation order
+    for i in (2, 0, 3, 1):
+        trip.app.delete_expense(trip.group, expenses[i].expense_id)
+
+    assert trip.group.expenses == ()
+    for user_balances in trip.group.balances.values():
+        for balance in user_balances.values():
+            assert balance == 0
+    for user in trip.group.users:
+        assert user.net_balance(trip.group) == 0
