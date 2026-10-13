@@ -169,3 +169,33 @@ def test_deleting_many_expenses_with_leftover_cents_restores_zero_balances(trip)
             assert balance == 0
     for user in trip.group.users:
         assert user.net_balance(trip.group) == 0
+
+
+def test_simplify_debts_settles_group_without_changing_balances(trip):
+    trip.app.add_expense(
+        trip.group,
+        trip.alice,
+        [trip.bob, trip.charlie],
+        6000,
+        "tickets",
+    )
+    trip.app.add_expense(
+        trip.group,
+        trip.bob,
+        [trip.alice, trip.charlie],
+        10001,
+        "dinner",
+    )
+    balances_before = {
+        user: dict(user_balances)
+        for user, user_balances in trip.group.balances.items()
+    }
+    nets = {user: user.net_balance(trip.group) for user in trip.group.users}
+
+    payments = trip.group.simplify_debts()
+
+    assert trip.group.balances == balances_before
+    for payment in payments:
+        nets[payment.debtor] += payment.amount
+        nets[payment.creditor] -= payment.amount
+    assert all(net == 0 for net in nets.values())

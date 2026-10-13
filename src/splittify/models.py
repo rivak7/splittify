@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 import math
 import uuid
 
+from .simplify import Payment, greedy_simplify
+
 
 class User:
     """A simple model of a user."""
@@ -94,7 +96,7 @@ class Group:
     def _find_expense(self, expense_id: str) -> Expense | None:
         return self._expenses_by_id.get(expense_id)
 
-    def _add_users(self, *users):
+    def _add_users(self, *users: User):
         for user in users:
             if user in self.users:
                 continue # skip duplicates
@@ -183,6 +185,10 @@ class Group:
         # TODO: apply new effect
         # TODO: update updated_at
         return expense
+
+    def simplify_debts(self) -> list[Payment]:
+        nets = {user: user.net_balance(self) for user in self.users}
+        return greedy_simplify(nets)
 
     def _apply_expense(self, expense: Expense, remove=False):
         """
